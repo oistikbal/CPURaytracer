@@ -164,6 +164,7 @@
     <ClInclude Include="imgui\imstb_truetype.h" />
     <ClInclude Include="imgui_window.h" />
     <ClInclude Include="system.h" />
+    <ClInclude Include="Windows\viewport_window.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Core\application.cpp" />
@@ -178,6 +179,7 @@
     <ClCompile Include="imgui_impl.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="system.cpp" />
+    <ClCompile Include="Windows\viewport_window.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

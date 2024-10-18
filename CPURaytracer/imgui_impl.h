@@ -2,11 +2,13 @@
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_dx11.h"
 #include "imgui/imgui_impl_win32.h"
+
 #include <d3d11.h>
-#include <wrl.h>  // For Microsoft::WRL::ComPtr
+#include <wrl.h>
 #include <memory>
 
 #include "d3dclass.h"
+#include "Windows/viewport_window.h"
 
 namespace cpu_raytracer
 {
@@ -21,5 +23,6 @@ namespace cpu_raytracer
     private:
         HWND m_hwnd;
         std::shared_ptr<d3dclass> m_d3d;
+        std::shared_ptr<viewport_window> m_viewportWindow;
     };
 }

@@ -99,7 +99,8 @@ cpu_raytracer::d3dclass::d3dclass(int screenWidth, int screenHeight, bool vsync,
 		D3D11_SDK_VERSION, &swapChainDesc, m_swapChain.GetAddressOf(), m_device.GetAddressOf(), nullptr, m_deviceContext.GetAddressOf());
 	if (FAILED(result))
 		throw std::runtime_error("Failed to create device and swap chain");
-    create_render_target();
+
+    create_render_target(renderWidth, renderHeight);
 }
 
 cpu_raytracer::d3dclass::~d3dclass()
@@ -117,7 +118,7 @@ void cpu_raytracer::d3dclass::resize(int width, int height)
 {
     destroy_render_target();
     m_swapChain->ResizeBuffers(0, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
-    create_render_target();
+    create_render_target(width, height);
 }
 
 Microsoft::WRL::ComPtr<ID3D11Device> cpu_raytracer::d3dclass::get_device() const
@@ -135,15 +136,74 @@ Microsoft::WRL::ComPtr<IDXGISwapChain> cpu_raytracer::d3dclass::get_swap_chain()
     return m_swapChain;
 }
 
+Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> cpu_raytracer::d3dclass::get_viewport_view() const
+{
+    return m_viewportView;
+}
+
 void cpu_raytracer::d3dclass::destroy_render_target()
 {
     if (m_renderTargetView)
         m_renderTargetView->Release();
+
+    if (m_viewportTexture) 
+        m_viewportTexture->Release();
+    if (m_viewportView) 
+        m_viewportView->Release();
 }
 
-void cpu_raytracer::d3dclass::create_render_target()
+void cpu_raytracer::d3dclass::create_render_target(int width, int height)
 {
     Microsoft::WRL::ComPtr<ID3D11Texture2D> backBuffer;
     m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(backBuffer.GetAddressOf()));
     m_device->CreateRenderTargetView(backBuffer.Get(), nullptr, m_renderTargetView.GetAddressOf());
+
+    D3D11_TEXTURE2D_DESC textureDesc = {};
+    textureDesc.Width = width;         // Width of the texture
+    textureDesc.Height = height;       // Height of the texture
+    textureDesc.MipLevels = 1;         // Number of mipmap levels
+    textureDesc.ArraySize = 1;         // Number of textures in the array
+    textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // Texture format
+    textureDesc.SampleDesc.Count = 1;  // No multi-sampling
+    textureDesc.Usage = D3D11_USAGE_DEFAULT; // Usage flag
+    textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE; // Bind the texture for shader use
+
+    HRESULT hr = m_device->CreateTexture2D(&textureDesc, nullptr, m_viewportTexture.GetAddressOf());
+
+    m_device->CreateShaderResourceView(m_viewportTexture.Get(), nullptr, m_viewportView.GetAddressOf());
+
+    UINT solidColor = 0xffffffff; // ARGB format: Red
+
+    // Create an array to hold the color data
+    UINT* colorData = new UINT[width * height];
+
+    for (UINT y = 0; y < height; ++y)
+    {
+        for (UINT x = 0; x < width; ++x)
+        {
+            // Normalize coordinates (0 to 1 range)
+            float normX = static_cast<float>(x) / (width - 1);
+            float normY = static_cast<float>(y) / (height - 1);
+
+            // Calculate the color components based on normalized coordinates
+            UINT r = static_cast<UINT>(normX * 255); // Red from left to right
+            UINT g = static_cast<UINT>(normY * 255); // Green from top to bottom
+            UINT b = 255; // Constant blue component
+
+            // Combine the color components into ARGB format
+            colorData[y * width + x] = (255 << 24) | (b << 16) | (g << 8) | r; // ARGB
+        }
+    }
+
+    // Specify the subresource data
+    D3D11_SUBRESOURCE_DATA initData = {};
+    initData.pSysMem = colorData;         // Pointer to the color data
+    initData.SysMemPitch = width * sizeof(UINT); // Pitch (bytes per row)
+    initData.SysMemSlicePitch = 0;        // Not used for 2D textures
+
+    // Update the texture with the solid color
+    m_deviceContext->UpdateSubresource(m_viewportTexture.Get(), 0, nullptr, colorData, initData.SysMemPitch, 0);
+
+    // Clean up
+    delete[] colorData;
 }

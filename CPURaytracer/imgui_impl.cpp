@@ -12,6 +12,8 @@ cpu_raytracer::imgui_impl::imgui_impl(HWND hwnd, std::shared_ptr<d3dclass> d3d)
 
     ImGui_ImplWin32_Init(m_hwnd);
     ImGui_ImplDX11_Init(m_d3d->get_device().Get(), m_d3d->get_device_context().Get());
+
+    m_viewportWindow = std::make_shared<viewport_window>();
 }
 
 cpu_raytracer::imgui_impl::~imgui_impl()
@@ -41,6 +43,12 @@ void cpu_raytracer::imgui_impl::render()
             ImGui::EndMenu();
         }
 
+        if (ImGui::BeginMenu("Windows")) {
+            if (ImGui::MenuItem("Viewport"))
+                m_viewportWindow->set_open(true);
+            ImGui::EndMenu();
+        }
+
         //ImGui::SameLine(ImGui::GetWindowWidth() - 80); // Adjust spacing to right
         //if (ImGui::Button("H")) {
         //}
@@ -55,6 +63,9 @@ void cpu_raytracer::imgui_impl::render()
     }
 
     ImGui::DockSpaceOverViewport(ImGui::GetMainViewport()->ID);
+
+    m_viewportWindow->render(m_d3d->get_viewport_view());
+
     ImGui::Render();
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 }
