@@ -119,7 +119,7 @@ bool cpu_raytracer::system::frame(float deltaTime)
 
 	m_d3d->render();
 	m_imgui->begin_frame();
-	m_imgui->render();
+	m_imgui->render(deltaTime);
 	m_d3d->get_swap_chain()->Present(1, 0);
 
 	return true;

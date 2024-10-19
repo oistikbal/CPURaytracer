@@ -1,3 +1,5 @@
+#pragma once
+
 #include <d3d11.h>
 #include <wrl.h>
 
@@ -12,8 +14,8 @@ namespace cpu_raytracer
 		viewport_window();
 		~viewport_window();
 		void render(Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> imageView);
-
+		int m_width;
+		int m_height;
 	private:
-
 	};
 }

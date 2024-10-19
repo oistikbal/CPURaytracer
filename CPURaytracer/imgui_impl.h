@@ -9,6 +9,7 @@
 
 #include "d3dclass.h"
 #include "Windows/viewport_window.h"
+#include "Windows/settings_window.h"
 
 namespace cpu_raytracer
 {
@@ -19,10 +20,11 @@ namespace cpu_raytracer
         ~imgui_impl();
 
         void begin_frame();
-        void render();
+        void render(float deltaTime);
     private:
         HWND m_hwnd;
         std::shared_ptr<d3dclass> m_d3d;
         std::shared_ptr<viewport_window> m_viewportWindow;
+        std::shared_ptr<settings_window> m_settingsWindow;
     };
 }

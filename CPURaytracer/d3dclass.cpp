@@ -1,5 +1,6 @@
 #include "d3dclass.h"
 #include <stdexcept>
+#include <vector>
 
 using namespace Microsoft::WRL;
 
@@ -144,16 +145,20 @@ Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> cpu_raytracer::d3dclass::get_vi
 void cpu_raytracer::d3dclass::destroy_render_target()
 {
     if (m_renderTargetView)
-        m_renderTargetView->Release();
+        m_renderTargetView.Reset();
 
     if (m_viewportTexture) 
-        m_viewportTexture->Release();
+        m_viewportTexture.Reset();
     if (m_viewportView) 
-        m_viewportView->Release();
+        m_viewportView.Reset();
 }
 
 void cpu_raytracer::d3dclass::create_render_target(int width, int height)
 {
+    if (width < 0 || height < 0)
+        return;
+
+
     Microsoft::WRL::ComPtr<ID3D11Texture2D> backBuffer;
     m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(backBuffer.GetAddressOf()));
     m_device->CreateRenderTargetView(backBuffer.Get(), nullptr, m_renderTargetView.GetAddressOf());
@@ -175,7 +180,7 @@ void cpu_raytracer::d3dclass::create_render_target(int width, int height)
     UINT solidColor = 0xffffffff; // ARGB format: Red
 
     // Create an array to hold the color data
-    UINT* colorData = new UINT[width * height];
+    std::vector<UINT> colorData(width * height);
 
     for (UINT y = 0; y < height; ++y)
     {
@@ -197,13 +202,10 @@ void cpu_raytracer::d3dclass::create_render_target(int width, int height)
 
     // Specify the subresource data
     D3D11_SUBRESOURCE_DATA initData = {};
-    initData.pSysMem = colorData;         // Pointer to the color data
+    initData.pSysMem = colorData.data(); // Pointer to the color data managed by std::vector
     initData.SysMemPitch = width * sizeof(UINT); // Pitch (bytes per row)
     initData.SysMemSlicePitch = 0;        // Not used for 2D textures
 
-    // Update the texture with the solid color
-    m_deviceContext->UpdateSubresource(m_viewportTexture.Get(), 0, nullptr, colorData, initData.SysMemPitch, 0);
-
-    // Clean up
-    delete[] colorData;
+    // Update the texture with the color data
+    m_deviceContext->UpdateSubresource(m_viewportTexture.Get(), 0, nullptr, colorData.data(), initData.SysMemPitch, 0);
 }
