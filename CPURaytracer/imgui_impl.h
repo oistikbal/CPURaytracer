@@ -21,6 +21,7 @@ namespace cpu_raytracer
 
         void begin_frame();
         void render(float deltaTime);
+        std::shared_ptr<viewport_window> get_viewport_window();
     private:
         HWND m_hwnd;
         std::shared_ptr<d3dclass> m_d3d;

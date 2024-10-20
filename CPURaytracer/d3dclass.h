@@ -1,6 +1,7 @@
 #pragma once
 
 #include <d3d11.h>
+#include <vector>
 #include <wrl/client.h>
 
 namespace cpu_raytracer
@@ -12,7 +13,9 @@ namespace cpu_raytracer
 		~d3dclass();
 
 		void render();
-		void resize(int width, int height);
+		void resize(int width, int height, int textureWidth, int textureHeight);
+		void resize_window_texture(int width, int height);
+		void upload_texture(const std::vector<BYTE>& data, int width, int height);
 
 		Microsoft::WRL::ComPtr<ID3D11Device> get_device() const;
 		Microsoft::WRL::ComPtr<ID3D11DeviceContext> get_device_context() const;
@@ -21,7 +24,7 @@ namespace cpu_raytracer
 
 	private:
 		void destroy_render_target();
-		void create_render_target(int width, int height);
+		void create_render_target();
 	private:
 		Microsoft::WRL::ComPtr<IDXGISwapChain> m_swapChain;
 		Microsoft::WRL::ComPtr<ID3D11Device> m_device;

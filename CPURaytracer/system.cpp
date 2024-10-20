@@ -112,12 +112,10 @@ void cpu_raytracer::system::run()
 
 bool cpu_raytracer::system::frame(float deltaTime)
 {
-	if (!m_application->frame(deltaTime))
-	{
-		return false;
-	}
-
 	m_d3d->render();
+	m_d3d->resize_window_texture(m_imgui->get_viewport_window()->get_width(), m_imgui->get_viewport_window()->get_height());
+	m_d3d->upload_texture(m_application->frame(m_imgui->get_viewport_window()->get_width(), m_imgui->get_viewport_window()->get_height(), deltaTime),
+		m_imgui->get_viewport_window()->get_width(), m_imgui->get_viewport_window()->get_height());
 	m_imgui->begin_frame();
 	m_imgui->render(deltaTime);
 	m_d3d->get_swap_chain()->Present(1, 0);
@@ -158,13 +156,12 @@ LRESULT CALLBACK cpu_raytracer::system::message_handler(HWND hwnd, UINT umsg, WP
 
 	case WM_SIZE:
 	{
-		if (m_application == nullptr)
+		if (m_d3d == nullptr)
 			return 0;
 
 		UINT width = LOWORD(lparam);
 		UINT height = HIWORD(lparam);
-		m_application->resize(width, height);
-		m_d3d->resize(width, height);
+		m_d3d->resize(width, height, m_imgui->get_viewport_window()->get_width(), m_imgui->get_viewport_window()->get_height());
 	}
 
 	default:

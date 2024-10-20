@@ -15,14 +15,25 @@ void cpu_raytracer::viewport_window::render(Microsoft::WRL::ComPtr<ID3D11ShaderR
     if (m_open)
     {
         ImGui::Begin(m_title.c_str(), &m_open);
-		m_width = ImGui::GetContentRegionAvail().x;
-		m_height = ImGui::GetContentRegionAvail().y;
+		auto viewportSize = ImGui::GetContentRegionAvail();
 		ImGui::Image(
-			reinterpret_cast<ImTextureID>(imageView.Get()),
-			ImGui::GetContentRegionAvail(),
-			ImVec2(0, 1),
-			ImVec2(1, 0)
+			(ImTextureID)(void*)imageView.Get(),
+			viewportSize,
+			ImVec2(0.0f, 0.0f),
+			ImVec2(1.0f, 1.0f)
 		);
 		ImGui::End();
+		m_height = viewportSize.y;
+		m_width = viewportSize.x;
     }
+}
+
+int cpu_raytracer::viewport_window::get_width() const
+{
+	return m_width;
+}
+
+int cpu_raytracer::viewport_window::get_height() const
+{
+	return m_height;
 }

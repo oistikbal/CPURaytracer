@@ -24,8 +24,8 @@ void cpu_raytracer::settings_window::render(float deltaTime)
 
 		if (ImGui::CollapsingHeader("Resolution")) 
 		{
-			ImGui::Text("Viewport Resolution: X: %i, Y: % i", m_viewportWindow->m_width, m_viewportWindow->m_height);
-			ImGui::Text("Aspect Ratio: %.3f", (float)m_viewportWindow->m_width / m_viewportWindow->m_height);
+			ImGui::Text("Viewport Resolution: X: %i, Y: % i", m_viewportWindow->get_width(), m_viewportWindow->get_height());
+			ImGui::Text("Aspect Ratio: %.3f", (float)m_viewportWindow->get_height() / m_viewportWindow->get_width());
 
 			ImGui::Text("Adjust Resolution Scale:");
 			ImGui::SliderInt("##Slider", &m_resolutionScaler, 0, 100);

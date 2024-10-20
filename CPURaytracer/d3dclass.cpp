@@ -67,6 +67,7 @@ cpu_raytracer::d3dclass::d3dclass(int screenWidth, int screenHeight, bool vsync,
     int renderWidth = clientRect.right - clientRect.left;
     int renderHeight = clientRect.bottom - clientRect.top;
 
+
     // Initialize swap chain description
     swapChainDesc.BufferCount = 1;
     swapChainDesc.BufferDesc.Width = renderWidth;
@@ -101,7 +102,16 @@ cpu_raytracer::d3dclass::d3dclass(int screenWidth, int screenHeight, bool vsync,
 	if (FAILED(result))
 		throw std::runtime_error("Failed to create device and swap chain");
 
-    create_render_target(renderWidth, renderHeight);
+    D3D11_VIEWPORT viewport;
+    viewport.Width = static_cast<FLOAT>(renderWidth);
+    viewport.Height = static_cast<FLOAT>(renderHeight);
+    viewport.MinDepth = 0.0f;
+    viewport.MaxDepth = 1.0f;
+    viewport.TopLeftX = 0;
+    viewport.TopLeftY = 0;
+    m_deviceContext->RSSetViewports(1, &viewport);
+
+    resize(renderWidth, renderHeight, 8, 8);
 }
 
 cpu_raytracer::d3dclass::~d3dclass()
@@ -115,11 +125,82 @@ void cpu_raytracer::d3dclass::render()
     m_deviceContext->ClearRenderTargetView(m_renderTargetView.Get(), clear_color_with_alpha);
 }
 
-void cpu_raytracer::d3dclass::resize(int width, int height)
+void cpu_raytracer::d3dclass::resize(int width, int height, int textureWidth, int textureHeight)
 {
     destroy_render_target();
     m_swapChain->ResizeBuffers(0, width, height, DXGI_FORMAT_R8G8B8A8_UNORM, 0);
-    create_render_target(width, height);
+    create_render_target();
+    resize_window_texture(textureWidth, textureHeight);
+}
+
+void cpu_raytracer::d3dclass::resize_window_texture(int width, int height)
+{
+    static int _width = 0;
+    static int _height = 0;
+
+    if (width < 8)
+        width = 8;
+
+    if (height < 8)
+        height = 8;
+
+    if (_width == width && _height == height)
+        return;
+
+    if (m_viewportTexture)
+        m_viewportTexture.Reset();
+    if (m_viewportView)
+        m_viewportView.Reset();
+
+    D3D11_TEXTURE2D_DESC textureDesc = {};
+    textureDesc.Width = width;         // Width of the texture
+    textureDesc.Height = height;       // Height of the texture
+    textureDesc.MipLevels = 1;         // Number of mipmap levels
+    textureDesc.ArraySize = 1;         // Number of textures in the array
+    textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // Texture format
+    textureDesc.SampleDesc.Count = 1;  // No multi-sampling
+    textureDesc.Usage = D3D11_USAGE_DYNAMIC; // Usage flag
+    textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE; // Bind the texture for shader use
+    textureDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+    HRESULT hr = m_device->CreateTexture2D(&textureDesc, nullptr, m_viewportTexture.GetAddressOf());
+
+    D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
+    srvDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    srvDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+    srvDesc.Texture2D.MipLevels = textureDesc.MipLevels;
+    srvDesc.Texture2D.MostDetailedMip = 0;
+
+    m_device->CreateShaderResourceView(m_viewportTexture.Get(), &srvDesc, m_viewportView.GetAddressOf());
+
+    _width = width;
+    _height = height;
+}
+
+void cpu_raytracer::d3dclass::upload_texture(const std::vector<BYTE>& data, int width, int height)
+{
+
+    D3D11_MAPPED_SUBRESOURCE mappedResource;
+
+    // Map the texture for writing
+    m_deviceContext->Map(m_viewportTexture.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+
+    // Calculate the pointer to the mapped resource
+    BYTE* pData = static_cast<BYTE*>(mappedResource.pData);
+
+    // Copy each row of the texture
+    for (UINT y = 0; y < height; ++y)
+    {
+        // Copy the row with correct pitch handling
+        memcpy(
+            &pData[y * mappedResource.RowPitch],         // Destination row pointer with correct pitch
+            &data[y * width * 4],                        // Source row in 'data' (4 bytes per pixel: RGBA)
+            width * 4                                    // Copy width (4 bytes per pixel)
+        );
+    }
+
+    // Unmap the texture to apply changes
+    m_deviceContext->Unmap(m_viewportTexture.Get(), 0);
 }
 
 Microsoft::WRL::ComPtr<ID3D11Device> cpu_raytracer::d3dclass::get_device() const
@@ -146,66 +227,11 @@ void cpu_raytracer::d3dclass::destroy_render_target()
 {
     if (m_renderTargetView)
         m_renderTargetView.Reset();
-
-    if (m_viewportTexture) 
-        m_viewportTexture.Reset();
-    if (m_viewportView) 
-        m_viewportView.Reset();
 }
 
-void cpu_raytracer::d3dclass::create_render_target(int width, int height)
+void cpu_raytracer::d3dclass::create_render_target()
 {
-    if (width < 0 || height < 0)
-        return;
-
-
     Microsoft::WRL::ComPtr<ID3D11Texture2D> backBuffer;
     m_swapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), reinterpret_cast<void**>(backBuffer.GetAddressOf()));
     m_device->CreateRenderTargetView(backBuffer.Get(), nullptr, m_renderTargetView.GetAddressOf());
-
-    D3D11_TEXTURE2D_DESC textureDesc = {};
-    textureDesc.Width = width;         // Width of the texture
-    textureDesc.Height = height;       // Height of the texture
-    textureDesc.MipLevels = 1;         // Number of mipmap levels
-    textureDesc.ArraySize = 1;         // Number of textures in the array
-    textureDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM; // Texture format
-    textureDesc.SampleDesc.Count = 1;  // No multi-sampling
-    textureDesc.Usage = D3D11_USAGE_DEFAULT; // Usage flag
-    textureDesc.BindFlags = D3D11_BIND_SHADER_RESOURCE; // Bind the texture for shader use
-
-    HRESULT hr = m_device->CreateTexture2D(&textureDesc, nullptr, m_viewportTexture.GetAddressOf());
-
-    m_device->CreateShaderResourceView(m_viewportTexture.Get(), nullptr, m_viewportView.GetAddressOf());
-
-    UINT solidColor = 0xffffffff; // ARGB format: Red
-
-    // Create an array to hold the color data
-    std::vector<UINT> colorData(width * height);
-
-    for (UINT y = 0; y < height; ++y)
-    {
-        for (UINT x = 0; x < width; ++x)
-        {
-            // Normalize coordinates (0 to 1 range)
-            float normX = static_cast<float>(x) / (width - 1);
-            float normY = static_cast<float>(y) / (height - 1);
-
-            // Calculate the color components based on normalized coordinates
-            UINT r = static_cast<UINT>(normX * 255); // Red from left to right
-            UINT g = static_cast<UINT>(normY * 255); // Green from top to bottom
-            UINT b = 255; // Constant blue component
-
-            // Combine the color components into ARGB format
-            colorData[y * width + x] = (255 << 24) | (b << 16) | (g << 8) | r; // ARGB
-        }
-    }
-
-    // Specify the subresource data
-    D3D11_SUBRESOURCE_DATA initData = {};
-    initData.pSysMem = colorData.data(); // Pointer to the color data managed by std::vector
-    initData.SysMemPitch = width * sizeof(UINT); // Pitch (bytes per row)
-    initData.SysMemSlicePitch = 0;        // Not used for 2D textures
-
-    // Update the texture with the color data
-    m_deviceContext->UpdateSubresource(m_viewportTexture.Get(), 0, nullptr, colorData.data(), initData.SysMemPitch, 0);
 }

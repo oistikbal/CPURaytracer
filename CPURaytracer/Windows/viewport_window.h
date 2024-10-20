@@ -14,8 +14,10 @@ namespace cpu_raytracer
 		viewport_window();
 		~viewport_window();
 		void render(Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> imageView);
+		int get_width() const;
+		int get_height() const;
+	private:
 		int m_width;
 		int m_height;
-	private:
 	};
 }

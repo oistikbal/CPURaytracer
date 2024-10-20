@@ -2,6 +2,7 @@
 
 #include <Windows.h>
 #include <memory>
+#include <vector>
 
 namespace cpu_raytracer 
 {
@@ -10,10 +11,10 @@ namespace cpu_raytracer
 	public:
 		application();
 		~application();
-		bool frame(float deltaTime);
-		void resize(int width, int height);
+		const std::vector<BYTE>& frame(int width, int height, float deltaTime);
 	private:
-		bool render(float);
+		void render(int width, int height);
 	private:
+		std::vector<BYTE> m_data;
 	};
 }
